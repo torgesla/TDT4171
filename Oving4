@@ -1,0 +1,128 @@
+import math,random,numpy as np
+
+trainingdata = np.loadtxt("C:\\Users\\T. Laurvik\\Downloads\\Assignment_4_Data\\training.txt",'\t')
+testdata = np.loadtxt("C:\\Users\\T. Laurvik\\Downloads\\Assignment_4_Data\\test.txt",'\t')
+examples = testdata
+
+positive = 2 
+negative = 1
+
+class Node(object):
+    def __init__(self, attribute,data):
+        self.attribute = attribute
+        self.data = data
+        self.left = None 
+        self.right = None
+
+def count(data,columnindex): ##Funker
+    p,n = 0,0
+    for row in data:
+        cell = row[columnindex]
+        if(cell==positive): p+=1
+        else: n+=1
+    return p,n
+
+def plurality_value(data): ##Må sjekkes
+    p,n = count(data,-1)
+    if(p>n): return positive
+    elif(p<n): return negative
+    else: return random.randint(1,2)
+
+def allSame(data): ##Må sjekkes
+    p,n = count(data,-1)
+    if(p>0 and n==0): return True,positive
+    elif(p==0 and n>0): return True,negative
+    else: return False,None
+
+def B(q): ##Funker
+    if(q==0 or q==1):
+        return q        
+    return -(q*math.log(q,2)+(1-q)*math.log((1-q),2))
+
+def entropy(data,columnindex): ##Funker
+    p,n = count(data,columnindex)
+    return B(p/(p+n))
+
+def choose_path(data,columnindex,value): ##Funker
+    p,n = 0,0
+    for row in data:
+        if(row[columnindex]==value):
+            if(row[-1]==positive): p+=1
+            else: n+=1
+    return p,n
+            
+def remainder(examples,columnindex): ##Funker
+    p,n = count(examples,columnindex)
+    p_k1,n_k1 = choose_path(examples,columnindex,positive)
+    p_k2,n_k2 = choose_path(examples,columnindex,negative)
+    weight1 = (p_k1+n_k1)/(p+n)
+    weight2 = (p_k2+n_k2)/(p+n)
+    B_path_1 = B(p_k1/(p_k1+n_k1))
+    B_path_2 = B(p_k2/(p_k2+n_k2))
+    return weight1*B_path_1+weight2*B_path_2
+
+
+def information_gain(data,columnindex): ##Funker
+    return entropy(data,columnindex) - remainder(data,columnindex)
+
+def choose_split(data,attributes): ##Må sjekkes
+    maxgain = float('-Inf')
+    maxindex = None
+    for attribute in attributes:
+        gain = information_gain(data,attribute)
+        if gain>maxgain:
+            maxgain = gain
+            maxindex = attribute
+    return maxindex
+
+def isEmpty(data): ##Må sjekkes
+    return len(data)==0
+
+def attributesIsEmpty(attributes): ##Returns True is remaining_attributes is empty
+    return len(attributes)==0
+
+def remove_row(data,attribute,value):
+    remaining_data = []
+    for row in data:
+        if(row[attribute]==value):
+            remaining_data.append(row)            
+    return remaining_data    
+                
+def DTL(data,remaining_attributes,depth=0):
+    ##print(f'depth{depth}',depth*'\t',remaining_attributes)
+    if (isEmpty(data)): return plurality_value(parentexamples) ##Må sjekkes
+    
+    allsamebool,value = allSame(data)
+    
+    if(allsamebool): return value
+    elif(attributesIsEmpty(remaining_attributes)): return plurality_value(data)
+    else:
+        A = choose_split(data,remaining_attributes)
+        splitNode = Node(A,data)
+        remaining_attributes.remove(A)
+        data_1 = remove_row(data,A,positive)
+        data_2 = remove_row(data,A,negative)        
+        splitNode.left = DTL(data_1,remaining_attributes,depth+1)
+        splitNode.right = DTL(data_2,remaining_attributes,depth+1)
+    return splitNode     
+
+def printTree(rootNode,depth=0):
+    print(rootNode.attribute)
+    print(f'depth:{depth},split:',rootNode.attribute)
+    if(rootNode.left==None):
+        return 'leaf'
+    printTree(rootNode.left,depth+1)
+    printTree(rootNode.right,depth+1)
+    
+def main(dataset):
+    attributes = list(range(len(dataset[0])-1))
+    rootNode = DTL(trainingdata,attributes)
+    printTree(rootNode)
+    
+if __name__ == "__main__":
+    main(testdata)
+
+
+    
+
+    
